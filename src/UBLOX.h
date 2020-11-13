@@ -109,16 +109,23 @@ class UBLOX{
     HardwareSerial* _bus;
     uint32_t _baud;
   	uint8_t _parserState;
-    const uint8_t _ubxHeader[2] = {0xB5, 0x62};
-    const uint8_t _ubxNavPvt_msgClass = 0x01;
-    const uint8_t _ubxNavPvt_msgId = 0x07;
-    const uint16_t _ubxNavPvt_msgLen = 96;
+    const uint8_t _ubxPreamble[2] = {0xB5, 0x62};
     uint8_t _checksum[2];
     uint8_t _byte;
-    struct _UBX_NAV_PVT {
+
+    const uint16_t _headerLen = 4;
+
+    struct _Header {
       uint8_t msg_class;
       uint8_t msg_id;
       uint16_t msg_length;
+    };
+
+    const uint8_t _ubxNavPvt_msgClass = 0x01;
+    const uint8_t _ubxNavPvt_msgId = 0x07;
+    const uint16_t _ubxNavPvt_msgLen = 92;
+
+    struct _UBX_NAV_PVT {
       uint32_t iTOW;
       uint16_t year;
       uint8_t month;
@@ -152,11 +159,16 @@ class UBLOX{
       int16_t magDec;
       uint16_t magAcc;
     };
+
+    uint8_t _tempPacket[264], _validPacket[264];
+    //struct _UBX_NAV_PVT _tempPacket,_validPacket;
+    
     const double _PI = 3.14159265358979323846;
-    struct _UBX_NAV_PVT _tempPacket,_validPacket;
     const float _m2ft = 3.28084;
     const float _deg2rad = _PI/180.0;
-	  bool _parse(uint8_t msg_class,uint8_t msg_id,uint16_t msg_length);
+	  
+    bool _parse();
+    bool _parse(uint8_t msg_class,uint8_t msg_id,uint16_t msg_length);
 	  void _calcChecksum(uint8_t* CK, uint8_t* payload, uint16_t length);
 };
 

@@ -378,6 +378,48 @@ bool UBLOX::isMagneticDeclinationValid()
 	return _validPacket.valid & 0x08;
 }
 
+/* parses generic the uBlox data */
+bool UBLOX::_parse()
+{
+	// read a byte from the serial port
+	while (_bus->available()) {
+		_byte = _bus->read();
+		// identify the packet preamble
+		if (_parserState < 2) {
+			if (_byte == _ubxPreamble[_parserState]) {
+				_parserState++;
+			} else {
+				_parserState = 0;
+			}
+		} else {
+			// read header
+			if ((_parseState - 2) < _headerLen) {
+				*((uint8_t *) &_tempPacket + _parserState - 2) = _byte;
+			} else if ((_parserState - _headerLen - 2) < ((_Header*)_tempPacket)->msg_length) {
+				*((uint8_t *) &_tempPacket + _parserState - 2) = _byte;
+			}
+			_parserState++;
+			// compute checksum
+			if ((_parserState - 2) == msg_length) {
+				_calcChecksum(_checksum,((uint8_t *) &_tempPacket),msg_length);
+			} else if ((_parserState - 2) == (msg_length + 1)) {
+				if (_byte != _checksum[0]) {
+					_parserState = 0;
+				}
+			} else if ((_parserState - 2) == (msg_length + 2)) {
+				_parserState = 0;
+				if (_byte == _checksum[1]) {
+					memcpy(&_validPacket,&_tempPacket,sizeof(_validPacket));
+					return true;
+				}
+			} else if (_parserState > (msg_length + 4) ) {
+				_parserState = 0;
+			}
+		}
+	}
+	return false;
+}
+
 /* parse the uBlox data */
 bool UBLOX::_parse(uint8_t msg_class,uint8_t msg_id,uint16_t msg_length)
 {

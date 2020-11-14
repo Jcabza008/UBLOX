@@ -34,6 +34,8 @@ void UBLOX::begin()
 {
 	// initialize parsing state
 	_parserState = 0;
+	_tempChecksum[0] = 0;
+	_tempChecksum[1] = 0;
 	// begin the serial port for uBlox
 	_bus->begin(_baud);
 }
@@ -41,7 +43,7 @@ void UBLOX::begin()
 /* reads packets from the uBlox receiver */
 bool UBLOX::readSensor()
 {
-	if (_parse()) {
+	if (_parseAutoCK()) {
 		return true;
 	} else {
 		return false;
@@ -65,6 +67,8 @@ void UBLOX::printPacket(HardwareSerial& ostream)
 	ostream.println();
 	for(auto i = 0; i < sizeof(_ubxPreamble); i++)
 	{
+		if(_ubxPreamble[i] <= 0xF)
+			Serial.print(F("0"));
 		ostream.print(_ubxPreamble[i], HEX);
 		ostream.print(" ");
 	}
@@ -72,6 +76,8 @@ void UBLOX::printPacket(HardwareSerial& ostream)
 
 	for(auto i = 0; i < sizeof(_Header) + ((_Header*)_tempPacket)->msg_length; i++)
 	{
+		if(_tempPacket[i] <= 0xF)
+			Serial.print(F("0"));
 		ostream.print(_tempPacket[i], HEX);
 		ostream.print(" ");
 	}
@@ -79,6 +85,8 @@ void UBLOX::printPacket(HardwareSerial& ostream)
 
 	for(auto i = 0; i < sizeof(_checksum); i++)
 	{
+		if(_checksum[i] <= 0xF)
+			Serial.print(F("0"));
 		ostream.print(_checksum[i], HEX);
 		ostream.print(" ");
 	}
@@ -499,6 +507,62 @@ bool UBLOX::_parse()
 		}
 	}
 	return false;
+}
+
+/* parses generic the uBlox data */
+bool UBLOX::_parseAutoCK()
+{
+	// read a byte from the serial port
+	while (_bus->available()) {
+		_byte = _bus->read();
+		// identify the packet preamble
+		if (_parserState < sizeof(_ubxPreamble)) {
+			if (_byte == _ubxPreamble[_parserState]) {
+				_parserState++;
+			} else {
+				_parserState = 0;
+			}
+		} else {
+			// read header
+			if ((_parserState - sizeof(_ubxPreamble)) < sizeof(_Header)) {
+				// Get byte
+				*((uint8_t *) &_tempPacket + (_parserState - sizeof(_ubxPreamble))) = _byte;
+				// compute checksum
+				_tempChecksum[0] += _byte;
+				_tempChecksum[1] += _tempChecksum[0];
+			} else if ((_parserState - sizeof(_Header) - sizeof(_ubxPreamble)) < ((_Header*)_tempPacket)->msg_length) {
+				*((uint8_t *) &_tempPacket + (_parserState - sizeof(_ubxPreamble))) = _byte;
+				_tempChecksum[0] += _byte;
+				_tempChecksum[1] += _tempChecksum[0];
+			}
+			_parserState++;
+
+			// compute checksum
+			if ((_parserState - sizeof(_ubxPreamble)) == (sizeof(_Header) + ((_Header*)_tempPacket)->msg_length)) {
+				memcpy(_checksum, _tempChecksum, sizeof(_checksum));
+			} else if ((_parserState - sizeof(_ubxPreamble)) == (sizeof(_Header) + ((_Header*)_tempPacket)->msg_length + 1)) {
+				if (_byte != _checksum[0]) {
+					_resetParserAndTmpCK();
+				}
+			} else if ((_parserState - 2) == (sizeof(_Header) + ((_Header*)_tempPacket)->msg_length + 2)) {
+				_resetParserAndTmpCK();
+				if (_byte == _checksum[1]) {
+					//memcpy(&_validPacket, &_tempPacket, sizeof(_Header) + ((_Header*)_tempPacket)->msg_length);
+					return true;
+				}
+			} else if (_parserState > (sizeof(_Header) + ((_Header*)_tempPacket)->msg_length + 4) ) {
+				_resetParserAndTmpCK();
+			}
+		}
+	}
+	return false;
+}
+
+void UBLOX::_resetParserAndTmpCK() 
+{
+	_parserState = 0;
+	_tempChecksum[0] = 0;
+	_tempChecksum[1] = 0;
 }
 
 // /* parse the uBlox data */

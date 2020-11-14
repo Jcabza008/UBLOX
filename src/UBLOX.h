@@ -113,20 +113,20 @@ class UBLOX{
   private:
     HardwareSerial* _bus;
     uint32_t _baud;
-  	uint8_t _parserState;
+    uint16_t _parserState;
     const uint8_t _ubxPreamble[2] = {0xB5, 0x62};
     uint8_t _checksum[2];
     uint8_t _byte;
+
+    const uint8_t _ubxNavPvt_msgClass = 0x01;
+    const uint8_t _ubxNavPvt_msgId = 0x07;
+    const uint16_t _ubxNavPvt_msgLen = 92;
 
     struct _Header {
       uint8_t msg_class;
       uint8_t msg_id;
       uint16_t msg_length;
     };
-
-    const uint8_t _ubxNavPvt_msgClass = 0x01;
-    const uint8_t _ubxNavPvt_msgId = 0x07;
-    const uint16_t _ubxNavPvt_msgLen = 92;
 
     struct _UBX_NAV_PVT {
       uint8_t msg_class;
@@ -167,6 +167,7 @@ class UBLOX{
     };
 
     uint8_t _tempPacket[2048];
+    uint8_t _tempChecksum[2];
     //struct _UBX_NAV_PVT _tempPacket,_validPacket;
     
     const double _PI = 3.14159265358979323846;
@@ -174,8 +175,11 @@ class UBLOX{
     const float _deg2rad = _PI/180.0;
 	  
     bool _parse();
+    bool _parseAutoCK();
+
     //bool _parse(uint8_t msg_class,uint8_t msg_id,uint16_t msg_length);
 	  void _calcChecksum(uint8_t* CK, uint8_t* payload, uint16_t length);
+    void _resetParserAndTmpCK();
 };
 
 #endif

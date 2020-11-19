@@ -55,6 +55,8 @@ class UBLOX{
     void writePacket(HardwareSerial& ostream);
     void printPacket(HardwareSerial& ostream);
 
+    void _modifyPVT();
+
     uint32_t getTow_ms();
     uint16_t getYear();
     uint8_t getMonth();
@@ -164,6 +166,26 @@ class UBLOX{
       int32_t headVeh;
       int16_t magDec;
       uint16_t magAcc;
+    };
+
+    struct _UBX_NAV_HPPOSLLH {
+      uint8_t msg_class;
+      uint8_t msg_id;
+      uint16_t msg_length;
+      uint8_t version;
+      uint8_t reserved0[2];
+      uint8_t flags:8;
+      uint32_t iTOW;
+      int32_t lon;
+      int32_t lat;
+      int32_t height;
+      int32_t hMSL;
+      int8_t  lonHp;
+      int8_t  latHp;
+      int8_t  heightHp;
+      int8_t  hMSLHp;
+      uint32_t hAcc;
+      uint32_t vAcc;
     };
 
     uint8_t _tempPacket[2048];

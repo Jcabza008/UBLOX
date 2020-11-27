@@ -559,17 +559,114 @@ bool UBLOX::_parseAutoCK()
 	return false;
 }
 
-void UBLOX::_modifyPVT()
+void UBLOX::_modifyPVT(double latCorr, double lonCorr, double elvCorr)
 {
 	if(((_Header*)_tempPacket)->msg_class == 0x01 && ((_Header*)_tempPacket)->msg_id == 0x07)
 	{
-		((_UBX_NAV_PVT*)_tempPacket)->lat = 10000000;
+		int32_t lat = ((_UBX_NAV_PVT*)_tempPacket)->lat + (int32_t)(latCorr * pow(10, 7));
+		int32_t lon = ((_UBX_NAV_PVT*)_tempPacket)->lon + (int32_t)(lonCorr * pow(10, 7));
+		int32_t hMSL = ((_UBX_NAV_PVT*)_tempPacket)->hMSL + (int32_t)(elvCorr * pow(10, 3));
+
+		((_UBX_NAV_PVT*)_tempPacket)->lat = lat;
+		((_UBX_NAV_PVT*)_tempPacket)->lon = lon;
+		((_UBX_NAV_PVT*)_tempPacket)->hMSL = hMSL;	
+
 		_calcChecksum(_checksum, ((uint8_t *) &_tempPacket), sizeof(_Header) + ((_Header*)_tempPacket)->msg_length);
 	}
 	if(((_Header*)_tempPacket)->msg_class == 0x01 && ((_Header*)_tempPacket)->msg_id == 0x14)
 	{
-		((_UBX_NAV_HPPOSLLH*)_tempPacket)->lat += 10000000;
+		Serial.println();
+		Serial.println("From NAV_HPPOSLLH original:");
+		Serial.print("Latitude: ");
+		Serial.print(((_UBX_NAV_HPPOSLLH*)_tempPacket)->lat);
+		Serial.print(" ----- ");
+		Serial.print(((_UBX_NAV_HPPOSLLH*)_tempPacket)->latHp);
+		Serial.println();
+		Serial.print("Longitude: ");
+		Serial.print(((_UBX_NAV_HPPOSLLH*)_tempPacket)->lon);
+		Serial.print(" ----- ");
+		Serial.print(((_UBX_NAV_HPPOSLLH*)_tempPacket)->lonHp);
+		Serial.println();
+
+		Serial.println();
+		Serial.print("Correction Lat: ");
+		Serial.print(latCorr, 10);
+		Serial.println();
+		Serial.print("Correction Lon: ");
+		Serial.print(lonCorr, 10);
+		Serial.println();
+
+		int16_t latTemp = ((_UBX_NAV_HPPOSLLH*)_tempPacket)->latHp + (latCorr * pow(10, 9));
+
+		int16_t lonTemp = ((_UBX_NAV_HPPOSLLH*)_tempPacket)->lonHp + (lonCorr * pow(10, 9));
+
+		int16_t hMSLTemp = ((_UBX_NAV_HPPOSLLH*)_tempPacket)->hMSLHp + (elvCorr * pow(10, 4));
+
+		// Serial.println();
+		// Serial.print("Integer Lat Temp: ");
+		// Serial.print(latTemp);
+		// Serial.println();
+		// Serial.print("Integer Lon Temp: ");
+		// Serial.print(lonTemp);
+		// Serial.println();
+		// Serial.print("Integer Height Temp: ");
+		// Serial.print(hMSLTemp);
+		// Serial.println();
+
+		int8_t latHp = latTemp % 100;
+		int8_t lonHp = lonTemp % 100;
+		int8_t hMSLHp = hMSLTemp % 10;
+
+		int32_t lat = ((_UBX_NAV_HPPOSLLH*)_tempPacket)->lat + latTemp/100;
+		int32_t lon = ((_UBX_NAV_HPPOSLLH*)_tempPacket)->lon + lonTemp/100;
+		int32_t hMSL = ((_UBX_NAV_HPPOSLLH*)_tempPacket)->hMSL + hMSLTemp/10;
+
+		// Serial.println();
+		// Serial.print("Integer Lat: ");
+		// Serial.print(lat);
+		// Serial.println();
+		// Serial.print("Integer Lon: ");
+		// Serial.print(lon);
+		// Serial.println();
+		// Serial.print("Integer Height: ");
+		// Serial.print(hMSL);
+		// Serial.println();
+
+
+		// Serial.println();
+		// Serial.print("Integer LatHp: ");
+		// Serial.print(latHp);
+		// Serial.println();
+		// Serial.print("Integer LonHp: ");
+		// Serial.print(lonHp);
+		// Serial.println();
+		// Serial.print("Integer HeightHp: ");
+		// Serial.print(hMSLHp);
+		// Serial.println();
+
+		((_UBX_NAV_HPPOSLLH*)_tempPacket)->lat = lat;
+		((_UBX_NAV_HPPOSLLH*)_tempPacket)->lon = lon;
+		((_UBX_NAV_HPPOSLLH*)_tempPacket)->hMSL = hMSL;	
+
+		((_UBX_NAV_HPPOSLLH*)_tempPacket)->latHp = latHp;
+		((_UBX_NAV_HPPOSLLH*)_tempPacket)->lonHp = lonHp;
+		((_UBX_NAV_HPPOSLLH*)_tempPacket)->hMSLHp = hMSLHp;
+
 		_calcChecksum(_checksum, ((uint8_t *) &_tempPacket), sizeof(_Header) + ((_Header*)_tempPacket)->msg_length);
+
+
+		Serial.println();
+		Serial.println("From NAV_HPPOSLLH corrected:");
+		Serial.print("Latitude: ");
+		Serial.print(((_UBX_NAV_HPPOSLLH*)_tempPacket)->lat);
+		Serial.print(" ----- ");
+		Serial.print(((_UBX_NAV_HPPOSLLH*)_tempPacket)->latHp);
+		Serial.println();
+		Serial.print("Longitude: ");
+		Serial.print(((_UBX_NAV_HPPOSLLH*)_tempPacket)->lon);
+		Serial.print(" ----- ");
+		Serial.print(((_UBX_NAV_HPPOSLLH*)_tempPacket)->lonHp);
+		Serial.println();
 	}
 }
 

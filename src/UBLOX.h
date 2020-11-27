@@ -55,7 +55,7 @@ class UBLOX{
     void writePacket(HardwareSerial& ostream);
     void printPacket(HardwareSerial& ostream);
 
-    void _modifyPVT();
+    void _modifyPVT(double latCorr, double lonCorr, double elvCorr);
 
     uint32_t getTow_ms();
     uint16_t getYear();

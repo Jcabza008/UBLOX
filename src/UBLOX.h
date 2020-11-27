@@ -50,6 +50,13 @@ class UBLOX{
     UBLOX(HardwareSerial& bus,uint32_t baud);
     void begin();
     bool readSensor();
+
+    void writePacket();
+    void writePacket(HardwareSerial& ostream);
+    void printPacket(HardwareSerial& ostream);
+
+    void _modifyPVT();
+
     uint32_t getTow_ms();
     uint16_t getYear();
     uint8_t getMonth();
@@ -108,13 +115,21 @@ class UBLOX{
   private:
     HardwareSerial* _bus;
     uint32_t _baud;
-  	uint8_t _parserState;
-    const uint8_t _ubxHeader[2] = {0xB5, 0x62};
-    const uint8_t _ubxNavPvt_msgClass = 0x01;
-    const uint8_t _ubxNavPvt_msgId = 0x07;
-    const uint16_t _ubxNavPvt_msgLen = 96;
+    uint16_t _parserState;
+    const uint8_t _ubxPreamble[2] = {0xB5, 0x62};
     uint8_t _checksum[2];
     uint8_t _byte;
+
+    const uint8_t _ubxNavPvt_msgClass = 0x01;
+    const uint8_t _ubxNavPvt_msgId = 0x07;
+    const uint16_t _ubxNavPvt_msgLen = 92;
+
+    struct _Header {
+      uint8_t msg_class;
+      uint8_t msg_id;
+      uint16_t msg_length;
+    };
+
     struct _UBX_NAV_PVT {
       uint8_t msg_class;
       uint8_t msg_id;
@@ -152,12 +167,41 @@ class UBLOX{
       int16_t magDec;
       uint16_t magAcc;
     };
+
+    struct _UBX_NAV_HPPOSLLH {
+      uint8_t msg_class;
+      uint8_t msg_id;
+      uint16_t msg_length;
+      uint8_t version;
+      uint8_t reserved0[2];
+      uint8_t flags:8;
+      uint32_t iTOW;
+      int32_t lon;
+      int32_t lat;
+      int32_t height;
+      int32_t hMSL;
+      int8_t  lonHp;
+      int8_t  latHp;
+      int8_t  heightHp;
+      int8_t  hMSLHp;
+      uint32_t hAcc;
+      uint32_t vAcc;
+    };
+
+    uint8_t _tempPacket[2048];
+    uint8_t _tempChecksum[2];
+    //struct _UBX_NAV_PVT _tempPacket,_validPacket;
+    
     const double _PI = 3.14159265358979323846;
-    struct _UBX_NAV_PVT _tempPacket,_validPacket;
     const float _m2ft = 3.28084;
     const float _deg2rad = _PI/180.0;
-	  bool _parse(uint8_t msg_class,uint8_t msg_id,uint16_t msg_length);
+	  
+    bool _parse();
+    bool _parseAutoCK();
+
+    //bool _parse(uint8_t msg_class,uint8_t msg_id,uint16_t msg_length);
 	  void _calcChecksum(uint8_t* CK, uint8_t* payload, uint16_t length);
+    void _resetParserAndTmpCK();
 };
 
 #endif
